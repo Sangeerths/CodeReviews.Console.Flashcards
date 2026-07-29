@@ -1,8 +1,7 @@
-﻿namespace StudyDeck.Models
+﻿namespace StudyDeck.Models;
+
+public class StackCard
 {
-    public class StackCard
-    {
-        public int StackId { get; set; }
-        public string StackName { get; set; }
-    }
+    public int StackId { get; set; }
+    public string StackName { get; set; } = string.Empty;
 }

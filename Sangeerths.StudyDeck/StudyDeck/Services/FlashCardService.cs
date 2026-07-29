@@ -1,26 +1,29 @@
 ﻿using Spectre.Console;
 using StudyDeck.Database;
+using StudyDeck.DTO.FlashCard;
 using StudyDeck.Models;
 using StudyDeck.Validation;
+namespace StudyDeck.Services;
 
-namespace StudyDeck.Services
-{
-    public class FlashCardService
+public class FlashCardService
     {
         private readonly InputValidator _validator;
-        private readonly DbSession _dbSession;
+        private readonly FlashCardSession _flashCardSession;
+        private readonly StackSession _stackSession;
         private readonly ConsoleUI _consoleUI;
 
         public FlashCardService()
         {
             _validator = new InputValidator();
-            _dbSession = new DbSession();
+            _flashCardSession = new FlashCardSession();
+            _stackSession = new StackSession();
             _consoleUI = new ConsoleUI();
         }
 
         public void InsertFlashCard()
         {
-            string stackName = _validator.ValidateStackName();
+            
+            string stackName = _validator.ValidateStackName()!;
             if (string.IsNullOrEmpty(stackName))
             {
                 AnsiConsole.MarkupLine("[bold red]FlashCard insertion Failed.[/]");
@@ -28,30 +31,36 @@ namespace StudyDeck.Services
                 return;
             }
 
-            int stackId = _dbSession.GetStackId(stackName);
+            int stackId = _stackSession.GetStackId(stackName);
             if(stackId == -1)
             {
                 AnsiConsole.MarkupLine($"[bold red]Stack '{stackName}' does not exist.[/]");
                 _consoleUI.Pause();
                 return;
             }
-            
-            FlashCard? flashCard = _validator.ValidateFlashCard();
+
+            UpdateFlashCardDto? flashCard = _validator.ValidateFlashCard();
             if (flashCard == null)
             {
                 AnsiConsole.MarkupLine("[bold red]Flash Card insertion unsuccessful, please try again.[/]");
                 _consoleUI.Pause();
                 return;
             }
+            CreateFlashCardDto createFlashCardDto = new CreateFlashCardDto 
+            {
+                StackId = stackId,
+                Question = flashCard.Question!, 
+                Answer = flashCard.Answer! 
+            };
 
-            _dbSession.InsertFlashCard(stackId, flashCard.Question, flashCard.Answer);
+        _flashCardSession.InsertFlashCard(createFlashCardDto);
             AnsiConsole.MarkupLine("[bold green]Flash Card inserted successfully![/]");
             _consoleUI.Pause();
         }
 
         public void DeleteFlashCard()
         {
-            string stackName = _validator.ValidateStackName();
+            string stackName = _validator.ValidateStackName()!;
             if (string.IsNullOrEmpty(stackName))
             {
                 AnsiConsole.MarkupLine("[bold red]FlashCard Deletion Unsuccessful..[/]");
@@ -59,7 +68,7 @@ namespace StudyDeck.Services
                 return;
             }
 
-            if (_dbSession.IsStackExists(stackName) <= 0)
+            if (_stackSession.IsStackExists(stackName) <= 0)
             {
                 AnsiConsole.MarkupLine($"[bold red]Stack '{stackName}' does not exist.[/]");
                 _consoleUI.Pause();
@@ -74,21 +83,21 @@ namespace StudyDeck.Services
                 return;
             }
 
-            if (_dbSession.IsFlashCardExists(flashcardId) <= 0)
+            if (_flashCardSession.IsFlashCardExists(flashcardId) <= 0)
             {
                 AnsiConsole.MarkupLine("[bold red]FlashCard does not exist.[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            _dbSession.DeleteFlashCard(flashcardId);
+        _flashCardSession.DeleteFlashCard(flashcardId);
             AnsiConsole.MarkupLine("[bold green]Flash Card deleted successfully![/]");
             _consoleUI.Pause();
         }
 
         public void UpdateFlashCard()
         {
-            string stackName = _validator.ValidateStackName();
+            string stackName = _validator.ValidateStackName()!;
             if (string.IsNullOrEmpty(stackName))
             {
                 AnsiConsole.MarkupLine("[bold red]FlashCard Updation UnSuccessful[/]");
@@ -96,22 +105,23 @@ namespace StudyDeck.Services
                 return;
             }
 
-            int flashcardId = _validator.ValidateId();
-            if (flashcardId == -1) 
+            UpdateFlashCardDto updateFlashCardDto = new UpdateFlashCardDto();
+            updateFlashCardDto.FlashCardId = _validator.ValidateId();
+            if (updateFlashCardDto.FlashCardId == -1) 
             {
                 AnsiConsole.MarkupLine($"[bold red] FlashCard  doesnt exist[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            if (_dbSession.IsFlashCardExists(flashcardId) <= 0)
+            if (_flashCardSession.IsFlashCardExists(updateFlashCardDto.FlashCardId) <= 0)
             {
-                AnsiConsole.MarkupLine($"[bold red]FlashCard with id {flashcardId} does not exist.[/]");
+                AnsiConsole.MarkupLine($"[bold red]FlashCard with id {updateFlashCardDto.FlashCardId} does not exist.[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            FlashCard? updated = _validator.ValidateFlashCard();
+            UpdateFlashCardDto? updated = _validator.ValidateFlashCard();
             if (updated == null)
             {
                 AnsiConsole.MarkupLine("[bold red]Flash Card update unsuccessful, please try again.[/]");
@@ -119,14 +129,14 @@ namespace StudyDeck.Services
                 return;
             }
 
-            _dbSession.UpdateFlashCard(flashcardId, updated.Question, updated.Answer);
+        _flashCardSession.UpdateFlashCard(updateFlashCardDto);
             AnsiConsole.MarkupLine("[bold green]Flash Card updated successfully![/]");
             _consoleUI.Pause();
         }
 
         public void ViewAllFlashCards( )
         {
-            string stackName = _validator.ValidateStackName();
+            string stackName = _validator.ValidateStackName()!;
             if (string.IsNullOrEmpty(stackName))
             {
                 AnsiConsole.MarkupLine("[bold red]FlashCard Operation Unsuccessful[/]");
@@ -134,7 +144,7 @@ namespace StudyDeck.Services
                 return;
             }
 
-            int stackId = _dbSession.GetStackId(stackName);
+            int stackId = _stackSession.GetStackId(stackName);
             if(stackId == -1)
             {
                 AnsiConsole.WriteLine("[bold red]Wrong Stack[/]");
@@ -142,7 +152,7 @@ namespace StudyDeck.Services
                 return;
             }
 
-            List<FlashCard> cards = _dbSession.GetFlashCardsByStack(stackId);
+            List<FlashCard> cards = _flashCardSession.GetFlashCardsByStack(stackId);
             if (cards.Count == 0)
             {
                 AnsiConsole.MarkupLine($"[yellow]No flashcards found in stack '{stackName}'.[/]");
@@ -155,11 +165,15 @@ namespace StudyDeck.Services
                 .AddColumn("Front")
                 .AddColumn("Back");
 
-            foreach (var card in cards)
-                table.AddRow(card.Id.ToString(), card.Question, card.Answer);
+            for (int i = 0; i < cards.Count; i++)
+            {
+                table.AddRow(
+                    (i + 1).ToString(),
+                    cards[i].Question!,
+                    cards[i].Answer!);
+            }
 
             AnsiConsole.Write(table);
             _consoleUI.Pause();
         }
     }
-}

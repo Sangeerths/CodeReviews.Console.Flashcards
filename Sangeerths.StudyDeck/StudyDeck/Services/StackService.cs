@@ -1,19 +1,19 @@
 ﻿using Spectre.Console;
 using StudyDeck.Database;
+using StudyDeck.DTO.Stack;
 using StudyDeck.Models;
 using StudyDeck.Validation;
+namespace StudyDeck.Services;
 
-namespace StudyDeck.Services
-{
-    public class StackService
+public class StackService
     {
-        private readonly DbSession _db;
+        private readonly StackSession _stackSession;
         private readonly InputValidator _validator = new InputValidator();
         private readonly ConsoleUI _consoleUI;
 
         public StackService()
         {
-            _db = new DbSession();
+        _stackSession = new StackSession();
             _consoleUI = new ConsoleUI();
         }
 
@@ -27,14 +27,14 @@ namespace StudyDeck.Services
                 return;
             }
 
-            if (_db.IsStackExists(stackName) > 0)
+            if (_stackSession.IsStackExists(stackName) > 0)
             {
                 AnsiConsole.MarkupLine($"[bold red]Stack '{stackName}' already exists.[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            _db.InsertStack(stackName);
+            _stackSession.InsertStack(stackName);
             AnsiConsole.MarkupLine($"[bold green]Stack '{stackName}' inserted successfully![/]");
             _consoleUI.Pause();
 
@@ -51,9 +51,9 @@ namespace StudyDeck.Services
                 return;
             }
 
-            if (_db.IsStackExists(stackName) > 0)
+            if (_stackSession.IsStackExists(stackName) > 0)
             {
-                _db.DeleteStack(stackName);
+                _stackSession.DeleteStack(stackName);
                 AnsiConsole.MarkupLine($"[bold green]Stack '{stackName}' deleted successfully![/]");
 
             }
@@ -67,44 +67,45 @@ namespace StudyDeck.Services
 
         public void UpdateStack()
         {
-            string? oldName = _validator.ValidateStackNameUpdate("Enter the current stack name. Press ESC to go back.");
-            if (oldName == null)
+            UpdateStackDto updateStack = new UpdateStackDto();
+            updateStack.OldName = _validator.ValidateStackNameUpdate("Enter the current stack name. Press ESC to go back.")!;
+            if (updateStack.OldName == null)
             {
                 AnsiConsole.MarkupLine("[bold red]Update operation Failed..[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            if (_db.IsStackExists(oldName) <= 0)
+            if (_stackSession.IsStackExists(updateStack.OldName) <= 0)
             {
-                AnsiConsole.MarkupLine($"[bold red]Stack '{oldName}' does not exist.[/]");
+                AnsiConsole.MarkupLine($"[bold red]Stack '{updateStack.OldName}' does not exist.[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            string? newName = _validator.ValidateStackNameUpdate("Enter the new stack name. Press ESC to go back.");
-            if (newName == null)
+            updateStack.NewName = _validator.ValidateStackNameUpdate("Enter the new stack name. Press ESC to go back.")!;
+            if (updateStack.NewName == null)
             {
                 AnsiConsole.MarkupLine("[bold red]Update operation Failed..[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            if (_db.IsStackExists(newName) > 0)
+            if (_stackSession.IsStackExists(updateStack.NewName) > 0)
             {
-                AnsiConsole.MarkupLine($"[bold red]Stack '{newName}' already exists.[/]");
+                AnsiConsole.MarkupLine($"[bold red]Stack '{updateStack.NewName}' already exists.[/]");
                 _consoleUI.Pause();
                 return;
             }
 
-            _db.UpdateStack(oldName, newName);
-            AnsiConsole.MarkupLine($"[bold green]Stack '{oldName}' renamed to '{newName}'.[/]");
+            _stackSession.UpdateStack(updateStack);
+            AnsiConsole.MarkupLine($"[bold green]Stack '{updateStack.OldName}' renamed to '{updateStack.NewName}'.[/]");
             _consoleUI.Pause();
         }
 
         public void ViewAllStacks()
         {
-            List<StackCard> stacks = _db.GetAllStacks();
+            List<StackCard> stacks = _stackSession.GetAllStacks();
 
             if (stacks.Count == 0)
             {
@@ -126,4 +127,3 @@ namespace StudyDeck.Services
             _consoleUI.Pause();
         }
     }
-}

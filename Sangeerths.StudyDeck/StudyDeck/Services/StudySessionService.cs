@@ -1,19 +1,24 @@
 ﻿using Spectre.Console;
 using StudyDeck.Database;
+using StudyDeck.DTO.StudySession;
 using StudyDeck.Models;
 using StudyDeck.Validation;
+using System.Security.Cryptography;
+namespace StudyDeck.Services;
 
-namespace StudyDeck.Services
-{
-    public class StudySessionService
+public class StudySessionService
     {
         private readonly InputValidator _validator;
-        private readonly DbSession _session;
+        private readonly StudingSession _studySession;
+        private readonly StackSession _stackSession;
+        private readonly FlashCardSession _flashCardSession;
         private readonly ConsoleUI _consoleUI;
         public StudySessionService()
         {
             _validator = new InputValidator();
-            _session = new DbSession();
+            _studySession = new StudingSession();
+            _stackSession = new StackSession();
+            _flashCardSession = new FlashCardSession();
             _consoleUI = new ConsoleUI();
             
         }
@@ -23,17 +28,14 @@ namespace StudyDeck.Services
             while (true)
             {
                 _consoleUI.ShowHeader();
-                var stacks = _session.GetAllStacks();
+                var stacks = _stackSession.GetAllStacks();
                 AnsiConsole.MarkupLine("[yellow]Search stack (leave blank to show all):[/]");
                 string search = Console.ReadLine() ?? string.Empty;
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
                     stacks = stacks
-                        .Where(s => s.StackName.Contains(
-                            search,
-                            StringComparison.OrdinalIgnoreCase))
-                        .ToList();
+                        .Where(s => s.StackName.Contains(search,StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
                 if (!stacks.Any())
@@ -83,7 +85,7 @@ namespace StudyDeck.Services
         public double RunQuiz(StackCard card)
         {
             
-            List<FlashCard> flashCards = _session.GetFlashCardsByStack(card.StackId);
+            List<FlashCard> flashCards = _flashCardSession.GetFlashCardsByStack(card.StackId);
             int correctCount = 0;
             int totalQuestions = flashCards.Count;
             if (!flashCards.Any()){
@@ -97,7 +99,7 @@ namespace StudyDeck.Services
                 AnsiConsole.Write(new Rule($"Question {i + 1} / {totalQuestions}").RuleStyle("yellow"));
                 AnsiConsole.MarkupLine($"\n[cyan]{flashCard.Question}[/]\n");
                 string userAnswer = AnsiConsole.Ask<string>("[green]Your Answer:[/]");
-                bool isCorrect = userAnswer.Trim().Equals(flashCard.Answer.Trim(), StringComparison.OrdinalIgnoreCase);
+                bool isCorrect = userAnswer.Trim().Equals(flashCard.Answer!.Trim(), StringComparison.OrdinalIgnoreCase);
 
                 if (isCorrect)
                 {
@@ -130,7 +132,15 @@ namespace StudyDeck.Services
 
             if (choice == "Yes")
             {
-                _session.InsertStudySession(card.StackId,card.StackName, score);
+                CreateStudySessionDto dto = new CreateStudySessionDto
+                {
+                    StackId = card.StackId,
+                    StackName = card.StackName,
+                    Score = score
+                };
+
+                _studySession.InsertStudySession(dto);
+                
             }
             _consoleUI.Pause();
             AnsiConsole.Clear();
@@ -140,12 +150,10 @@ namespace StudyDeck.Services
 
         public void ViewAllStudySession()
         {
-            List<StudySession> sessions = _session.GetAllStudySessions();
+            List<StudySession> sessions = _studySession.GetAllStudySessions();
             if (sessions.Count == 0)
             {
-                AnsiConsole.MarkupLine(
-                    "[yellow]No study sessions found.[/]");
-
+                AnsiConsole.MarkupLine("[yellow]No study sessions found.[/]");
                 _consoleUI.Pause();
                 return;
             }
@@ -167,8 +175,6 @@ namespace StudyDeck.Services
             }
 
             AnsiConsole.Write(table);
-
             _consoleUI.Pause();
         }
     }
-}

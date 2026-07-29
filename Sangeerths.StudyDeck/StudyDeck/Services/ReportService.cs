@@ -2,19 +2,18 @@
 using StudyDeck.Database;
 using StudyDeck.Validation;
 using System.Globalization;
+namespace StudyDeck.Services;
 
-namespace StudyDeck.Services
-{
     public class ReportService
     {
         private readonly InputValidator _validator;
-        private readonly DbSession _session;
+        private readonly ReportSession _reportSession;
         private readonly ConsoleUI _consoleUI;
 
         public ReportService()
         {
             _validator = new InputValidator();
-            _session = new DbSession();
+        _reportSession = new ReportSession();
             _consoleUI = new ConsoleUI();
         }
 
@@ -28,15 +27,41 @@ namespace StudyDeck.Services
                 return;
             }
 
-            var reports = _session.MonthlyStudyReport(year);
-            Table table = new Table().Border(TableBorder.Rounded).Title($"[yellow]Study Report - {year}[/]");
-            table.AddColumn("[cyan]Month[/]");
-            table.AddColumn(new TableColumn("[green]Sessions[/]").Centered());
+            var reports = _reportSession.GetStudySessionsPivotReport(year);
+            var table = new Table()
+       .Border(TableBorder.Rounded)
+       .Title($"[yellow]Study Sessions Per Stack - {year}[/]");
+
+            table.AddColumn("Stack");
+            table.AddColumn("Jan");
+            table.AddColumn("Feb");
+            table.AddColumn("Mar");
+            table.AddColumn("Apr");
+            table.AddColumn("May");
+            table.AddColumn("Jun");
+            table.AddColumn("Jul");
+            table.AddColumn("Aug");
+            table.AddColumn("Sep");
+            table.AddColumn("Oct");
+            table.AddColumn("Nov");
+            table.AddColumn("Dec");
+
             foreach (var report in reports)
             {
                 table.AddRow(
-                    CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(report.Month),
-                    report.TotalSession.ToString());    
+                    report.StackName,
+                    report.Jan.ToString(),
+                    report.Feb.ToString(),
+                    report.Mar.ToString(),
+                    report.Apr.ToString(),
+                    report.May.ToString(),
+                    report.Jun.ToString(),
+                    report.Jul.ToString(),
+                    report.Aug.ToString(),
+                    report.Sep.ToString(),
+                    report.Oct.ToString(),
+                    report.Nov.ToString(),
+                    report.Dec.ToString());
             }
 
             AnsiConsole.Write(table);
@@ -52,7 +77,7 @@ namespace StudyDeck.Services
                 return;
             }
 
-            var reports = _session.MonthlyStudyReport(year);
+            var reports = _reportSession.MonthlyStudyReport(year);
             Table table = new Table().Border(TableBorder.Rounded).Title($"[yellow]Average Session Score Report - {year}[/]");
             table.AddColumn("[cyan]Month[/]");
             table.AddColumn(new TableColumn("[green]Average Score[/]").Centered());
@@ -67,5 +92,5 @@ namespace StudyDeck.Services
             _consoleUI.Pause();
         }
     }
-}
+
 
